@@ -63,3 +63,16 @@ export const loginEmployee = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+export const LoguotEmployee = async (req ,res) =>{
+
+  try {
+    res.clearcookie('token',{
+      httpOnly:true,
+      secure:true,
+      sameSite:"none"
+  })
+  return  res.status(200).json({message:"Logout successfully"})
+  } catch (error) {
+    return res.status(404).json({message:`errror in logout controler ${error}`})
+  }
+}
