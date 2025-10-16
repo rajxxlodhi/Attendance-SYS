@@ -19,7 +19,16 @@ export const registerEmployee = async (req, res) => {
       password: hashedPassword,
     });
 
-    res.status(201).json({ message: "Employee registered successfully", newEmployee });
+    let token = await jwt.sign({newEmployee: newEmployee._id},process.env.JWT_SECRET,{expiresIn:"7d"})
+
+      res.cookie("token",token ,{
+            httpOnly:true,
+            secure:process.env.NODE_ENVIREMONT = "production",
+            sameSite:"strict",
+            maxAge:7*24*60*60*1000
+        })
+
+    res.status(201).json(newEmployee);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -42,16 +51,14 @@ export const loginEmployee = async (req, res) => {
       { expiresIn: "1d" }
     );
 
-    res.status(200).json({
-      message: "Login successful",
-      token,
-      employee: {
-        id: employee._id,
-        name: employee.name,
-        email: employee.email,
-        role: employee.role,
-      },
-    });
+      res.cookie("token",token ,{
+            httpOnly:true,
+            secure:process.env.NODE_ENVIREMONT = "production",
+            sameSite:"strict",
+            maxAge:7*24*60*60*1000
+        })
+
+    res.status(200).json(employee);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
