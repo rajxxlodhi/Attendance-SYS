@@ -7,7 +7,7 @@ import jwt from "jsonwebtoken";
 // Register Employee
 export const registerEmployee = async (req, res) => {
   try {
-    const { name, email, password } = req.body;
+    const { name, email, password ,role} = req.body;
 
     const existing = await Employee.findOne({ email });
     if (existing) return res.status(400).json({ message: "Email already registered" });
@@ -17,6 +17,7 @@ export const registerEmployee = async (req, res) => {
       name,
       email,
       password: hashedPassword,
+      role
     });
 
     let token = await jwt.sign({newEmployee: newEmployee._id},process.env.JWT_SECRET,{expiresIn:"7d"})
@@ -63,3 +64,18 @@ export const loginEmployee = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+
+export const LoguotEmployee = async (req ,res) =>{
+
+  try {
+    res.clearCookie('token',{
+      httpOnly:true,
+      secure:true,
+      sameSite:"none"
+  })
+  return  res.status(200).json({message:"Logout successfully"})
+  } catch (error) {
+    return res.status(404).json({message:`errror in logout controler ${error}`})
+  }
+}

@@ -9,7 +9,10 @@ const Register = () => {
     name: "",
     email: "",
     password: "",
+    
   });
+    const primaryColor = "#3B82F6"; 
+  const [role,setRole] = useState("employee")
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
@@ -24,11 +27,12 @@ const Register = () => {
     try {
       const res = await axios.post(
         "http://localhost:5000/api/auth/register",
-        formData
+         { ...formData, role }
       );
 
       toast.success("Registration successful!");
       navigate("/login");
+      console.log(res.data)
     } catch (err) {
       console.error(err);
       toast.error(err.response?.data?.message || "Registration failed");
@@ -94,6 +98,21 @@ const Register = () => {
             {showPassword ? <EyeOff size={22} /> : <Eye size={22} />}
           </div>
         </div>
+
+          <div className='mb-4'>
+                <label htmlFor="role" className='block text-gray-700 font-medium mb-1'>Role</label>
+                <div className='flex gap-2 flex-wrap'>
+                    {["employee","admin"].map((e,index)=>(
+                        <button key={index} className='flex-1 rounded-lg border px-3 py-2
+                         text-center font-medium transition-colors cursor-pointer '
+                         onClick={()=>setRole(e)} 
+                         style={
+                            role==e? {backgroundColor:primaryColor,color:"white"} : {border:`1px solid ${primaryColor}`,color:primaryColor}
+                         }>{e}</button>
+                    ))}
+                </div>
+
+            </div>
 
         {/* Submit Button */}
         <button
