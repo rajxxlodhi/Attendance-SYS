@@ -1,24 +1,33 @@
-import { useState } from "react";
+import { useContext, useState } from "react";
 import API from "../services/api.js";
 import axios from "axios";
 import { toast } from "react-toastify";
 import { Eye, EyeOff } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { userDataContext } from "../context/UserContext.jsx";
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate()
+  let [loading, setLoading] = useState(false)
+
+  let {setUserData} = useContext(userDataContext)
 
   const handleLogin = async (e) => {
+    setLoading(true)
     e.preventDefault();
     try {
-      const res = await axios.post("http://localhost:5000/Api/auth/login", { email, password });
+      const res = await axios.post("http://localhost:5000/Api/auth/login", { email, password },{withCredentials:true});
       toast.success("Login successfully");
-      navigate ("/dashboard")
-      // localStorage.setItem("token", res.data.token);
+      navigate ("/")
+      setUserData(res.data)
+      console.log(res.data)
+      setLoading(false)
     } catch (err) {
+      console.log(err)
+      setLoading(false)
       toast.error(err.response.data.message || "Login failed");
     }
   };
@@ -62,10 +71,21 @@ const Login = () => {
         {/* Submit Button */}
         <button
           type="submit"
-          className="w-full bg-blue-500 text-white py-4 rounded-xl font-semibold hover:bg-blue-600 transition duration-300"
+          disabled={loading}
+          className={`w-full ${
+            loading ? "bg-blue-400" : "bg-blue-600 hover:bg-blue-700"
+          } text-white font-semibold py-3 rounded-xl transition duration-300`}
         >
-          Login
+          {loading ? "login..." : "Login"}
         </button>
+
+         <p className="mt-4 text-center text-gray-600">
+          Create a new account?{" "}
+          <a onClick={()=>navigate("/register")} className="text-blue-600 font-medium hover:underline cursor-pointer">
+            Register
+          </a>
+        </p>
+
       </form>
     </div>
 
