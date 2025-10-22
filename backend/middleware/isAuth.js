@@ -8,7 +8,8 @@ const isAuth = (req, res, next) => {
     const verifyToken = jwt.verify(token, process.env.JWT_SECRET);
     if (!verifyToken) return res.status(400).json({ message: "User does not have a valid token" });
 
-    req.userId = verifyToken.userId; // match JWT payload
+    req.userId = verifyToken.userId; 
+    req.user = { id: verifyToken.userId };// match JWT payload
     next();
   } catch (error) {
     return res.status(400).json({ message: `isAuth middleware error: ${error.message}` });

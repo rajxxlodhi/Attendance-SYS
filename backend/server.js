@@ -6,6 +6,7 @@ import authRoutes from './routes/authRoutes.js';
 import userRouter from './routes/userRoutes.js';
 import attendancRouter from './routes/attendanceRoutes.js';
 import cookieParser from 'cookie-parser'; 
+import checkinRouter from './routes/checkinRouter.js';
 
 
 dotenv.config();
@@ -22,6 +23,7 @@ app.use(cors({
 app.use("/api/auth", authRoutes);
 app.use("/api/attendance", attendancRouter);
 app.use("/api/user",userRouter)
+app.use("/api/check", checkinRouter )
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
