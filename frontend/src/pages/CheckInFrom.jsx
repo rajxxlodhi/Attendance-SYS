@@ -1,3 +1,4 @@
+// src/pages/CheckInForm.jsx
 import axios from "axios";
 import React, { useRef, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
@@ -58,12 +59,13 @@ function CheckInForm() {
     try {
       setLoading(true);
       const res = await axios.post(
-        "http://localhost:5000/Api/check/checkin",
+        "http://localhost:5000/api/check/checkin", // <<< corrected path
         { image: captured, location },
         { withCredentials: true }
       );
       alert("✅ Check-in successful!");
-      setActive(res.data.newCheckin || res.data);
+      // backend sends populated checkin; store active locally as the returned doc
+      setActive(res.data);
       navigate("/");
     } catch (err) {
       console.error(err);
@@ -79,7 +81,6 @@ function CheckInForm() {
         Employee Daily Check-In
       </h2>
 
-      {/* Action Buttons */}
       <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mb-6 w-full">
         {!cameraActive && !captured && (
           <button
@@ -116,27 +117,18 @@ function CheckInForm() {
         )}
       </div>
 
-      {/* Video Preview */}
       <video
         ref={videoRef}
-        className={`rounded-lg w-full max-w-[320px] sm:max-w-[400px] h-auto aspect-video ${
-          cameraActive ? "block" : "hidden"
-        }`}
+        className={`rounded-lg w-full max-w-[320px] sm:max-w-[400px] h-auto aspect-video ${cameraActive ? "block" : "hidden"}`}
         autoPlay
       ></video>
 
       <canvas ref={canvasRef} className="hidden"></canvas>
 
-      {/* Captured Image Preview */}
       {captured && (
-        <img
-          src={captured}
-          alt="Captured Preview"
-          className="rounded-lg w-full max-w-[320px] sm:max-w-[400px] mt-5 object-cover"
-        />
+        <img src={captured} alt="Captured Preview" className="rounded-lg w-full max-w-[320px] sm:max-w-[400px] mt-5 object-cover" />
       )}
 
-      {/* Location */}
       {location && (
         <p className="mt-4 text-gray-700 text-sm sm:text-base text-center break-words">
           <span className="font-semibold">Latitude:</span> {location.latitude}
@@ -145,7 +137,6 @@ function CheckInForm() {
         </p>
       )}
 
-      {/* Submit Button */}
       {captured && location && (
         <button
           onClick={submit}

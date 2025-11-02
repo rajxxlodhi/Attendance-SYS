@@ -26,7 +26,7 @@ function App() {
             <Route path="/checkin" element={userData ? <CheckInFrom /> : <Navigate to="/login" />}/>
             <Route path="/history" element={userData ? <CheckinHistory /> : <Navigate to="/login" />}/>
             <Route path="/history/:id" element={userData ? <UserHistory /> : <Navigate to="/login" />}/>
-            <Route path="/allEmployes"element={userData ? <AllEmployes /> : <Navigate to="/login" />}/>
+            <Route path="/allEmployes"element={<AllEmployes />}/>
             
       </Routes>
     </>

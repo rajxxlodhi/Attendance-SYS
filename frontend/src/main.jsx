@@ -5,16 +5,16 @@ import "./index.css";
 import { BrowserRouter } from "react-router-dom";
 import UserContext from "./context/UserContext.jsx";
 import CheckinContext from "./context/CheckinContext.jsx";
-// import SocketCOntext from "./context/SocketCOntext.jsx";
+import SocketContextProvider from "./context/SocketCOntext.jsx";
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <BrowserRouter>
     <UserContext>
-      {/* <SocketCOntext> */}
-          <CheckinContext>
+         <CheckinContext>
+           <SocketContextProvider>
             <App />
+           </SocketContextProvider>
         </CheckinContext>
-      {/* </SocketCOntext> */}
     </UserContext>
   </BrowserRouter>
 );

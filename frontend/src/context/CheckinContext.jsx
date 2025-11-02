@@ -2,14 +2,15 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
 import { userDataContext } from "./UserContext";
+import { socketDataContext } from "./SocketCOntext";
 
 export const checkinDataContext = createContext();
 
 function CheckinContext({ children }) {
   const { userData } = useContext(userDataContext);
+  const socket = useContext(socketDataContext);
   const [active, setActive] = useState(null);
 
-  // 🔹 Fetch Active Check-in
   const fetchActive = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/check/active", {
@@ -22,7 +23,6 @@ function CheckinContext({ children }) {
     }
   };
 
-  // 🔹 Handle Check-in
   const handleCheckIn = async (image, location) => {
     try {
       const res = await axios.post(
@@ -32,6 +32,10 @@ function CheckinContext({ children }) {
       );
       setActive(res.data);
       localStorage.setItem("activeCheckin", JSON.stringify(res.data));
+
+      // ✅ Notify admin in real-time
+      if (socket) socket.emit("checkinEvent", res.data);
+
       return res.data;
     } catch (err) {
       console.error("Check-in error:", err.response?.data || err.message);
@@ -39,7 +43,6 @@ function CheckinContext({ children }) {
     }
   };
 
-  // 🔹 Handle Check-out
   const handleCheckOut = async () => {
     try {
       const res = await axios.post(
@@ -49,6 +52,10 @@ function CheckinContext({ children }) {
       );
       setActive(null);
       localStorage.removeItem("activeCheckin");
+
+      // ✅ Notify admin in real-time
+      if (socket) socket.emit("checkoutEvent", res.data);
+
       return res.data;
     } catch (err) {
       console.error("Check-out error:", err.response?.data || err.message);
@@ -56,7 +63,6 @@ function CheckinContext({ children }) {
     }
   };
 
-  // 🔹 Fetch Check-in History
   const fetchHistory = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/check/history", {
@@ -69,18 +75,11 @@ function CheckinContext({ children }) {
     }
   };
 
-  // 🔹 Save to localStorage
-  useEffect(() => {
-    if (active) localStorage.setItem("activeCheckin", JSON.stringify(active));
-  }, [active]);
-
-  // 🔹 Load from localStorage
   useEffect(() => {
     const saved = localStorage.getItem("activeCheckin");
     if (saved) setActive(JSON.parse(saved));
   }, []);
 
-  // 🔹 Fetch on login
   useEffect(() => {
     if (userData) fetchActive();
   }, [userData]);
@@ -91,7 +90,7 @@ function CheckinContext({ children }) {
     fetchActive,
     handleCheckIn,
     handleCheckOut,
-    fetchHistory, // ✅ added
+    fetchHistory,
   };
 
   return (

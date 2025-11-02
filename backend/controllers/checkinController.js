@@ -1,11 +1,11 @@
 import CheckIn from "../models/CheckinModel.js";
 import Employee from "../models/Employee.js";
 
+import { io } from "../socket/socket.js"; // <- import io
+
 const EXPIRE_MS = 14 * 60 * 60 * 1000; // 14 hours
 
-// ✅ Utility: Automatically finish any old active check-ins
 async function autoFinishOld(userId) {
-  // Find all old active check-ins (for this user)
   const activeCheckins = await CheckIn.find({
     user: userId,
     checkOutTime: null,
@@ -16,7 +16,6 @@ async function autoFinishOld(userId) {
   for (const checkin of activeCheckins) {
     const elapsed = Date.now() - new Date(checkin.checkInTime).getTime();
     if (elapsed >= EXPIRE_MS) {
-      // Auto-finish after 14 hours
       checkin.checkOutTime = new Date(
         new Date(checkin.checkInTime).getTime() + EXPIRE_MS
       );
@@ -27,7 +26,6 @@ async function autoFinishOld(userId) {
   }
 }
 
-// ✅ Create new check-in
 export const createCheckin = async (req, res) => {
   try {
     const userId = req.userId;
@@ -63,7 +61,19 @@ export const createCheckin = async (req, res) => {
       $push: { checkins: newCheckin._id },
     });
 
-    return res.status(201).json(newCheckin);
+    // Populate minimal user info for the emitted payload
+    const populated = await CheckIn.findById(newCheckin._id)
+      .populate("user", "name email")
+      .lean();
+
+    // 🔥 Emit real-time event to all connected clients (admins will listen)
+    try {
+      io.emit("newCheckin", populated);
+    } catch (emitErr) {
+      console.error("Socket emit error:", emitErr);
+    }
+
+    return res.status(201).json(populated);
   } catch (error) {
     console.error("createCheckin error:", error);
     return res.status(500).json({ message: "Server error", error: error.message });
@@ -94,19 +104,15 @@ export const getActive = async (req, res) => {
   }
 };
 
-// ✅ Manual checkout by user
+
 export const checkout = async (req, res) => {
   try {
     const userId = req.userId;
 
-    // Always auto-finish before checkout
-    await autoFinishOld(userId);
-
     const active = await CheckIn.findOne({
       user: userId,
-      checkOutTime: null,
-      autoFinished: false,
       status: "active",
+      checkOutTime: null,
     });
 
     if (!active) {
@@ -117,7 +123,15 @@ export const checkout = async (req, res) => {
     active.status = "checked-out";
     await active.save();
 
-    return res.status(200).json({ message: "Checked out successfully", data: active });
+    io.emit("employeeCheckedOut", {
+      userId,
+      checkInId: active._id,
+    }); // 🔥 instantly remove from admin dashboard
+
+    return res.status(200).json({
+      message: "Checked out successfully",
+      data: active,
+    });
   } catch (error) {
     console.error("checkout error:", error);
     return res.status(500).json({ message: "Server error" });

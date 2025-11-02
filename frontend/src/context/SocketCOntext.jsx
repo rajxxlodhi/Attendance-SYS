@@ -1,59 +1,39 @@
+// src/context/SocketContext.jsx
+import React, { createContext, useEffect, useState } from "react";
+import { io } from "socket.io-client";
 
-// import React, { createContext, useContext, useEffect, useState } from "react";
-// import { io } from "socket.io-client";
-// import { userDataContext } from "./UserContext";
+export const socketDataContext = createContext(null);
 
-// export const socketDataContext = createContext();
+const SocketContextProvider = ({ children }) => {
+  const [socket, setSocket] = useState(null);
 
-// function SocketCOntext({ children }) {
-//     const { userData } = useContext(userDataContext);
-//   const [socket, setSocket] = useState(null);
-//   const [onlineUsers, setOnlineUsers] = useState([]);
+  useEffect(() => {
+    // ✅ Connect to backend socket server
+    const newSocket = io("http://localhost:5000", {
+      withCredentials: true,
+      transports: ["websocket"],
+    });
 
-//     const connectSocket = () => {
-//     if (userData?._id) {
-//       const newSocket = io("http://localhost:5000", {
-//         query: { userId: userData._id },
-//         transports: ["websocket"],
-//       });
+    setSocket(newSocket);
 
-//       newSocket.on("connect", () => {
-//         console.log("✅ Socket connected:", newSocket.id);
-//       });
+    newSocket.on("connect", () => {
+      console.log("🟢 Socket connected:", newSocket.id);
+    });
 
-//       newSocket.on("getOnlineUsers", (users) => {
-//         console.log("🟢 Online Users:", users);
-//         setOnlineUsers(users);
-//       });
+    newSocket.on("disconnect", () => {
+      console.log("🔴 Socket disconnected");
+    });
 
-//       setSocket(newSocket);
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
 
-//       // Cleanup on disconnect
-//       return () => {
-//         newSocket.disconnect();
-//         console.log("❌ Socket disconnected");
-//       };
-//     }
-//   };
+  return (
+    <socketDataContext.Provider value={socket}>
+      {children}
+    </socketDataContext.Provider>
+  );
+};
 
-//   useEffect(() => {
-//     const cleanup = connectSocket();
-//     return () => {
-//       if (cleanup) cleanup();
-//     };
-//   }, [userData]);
-
-
-//     let value = {
-//     socket,
-//     onlineUsers,
-//   };
-
-//   return (
-//     <socketDataContext.Provider value={value}>
-
-//     </socketDataContext.Provider>
-//   )
-// }
-
-// export default SocketCOntext
+export default SocketContextProvider;
