@@ -1,44 +1,47 @@
 import CheckIn from "../models/CheckinModel.js";
 import Employee from "../models/Employee.js";
 
-const EXPIRE_MS = 18 * 60 * 60 * 1000; // 18 hours
+const EXPIRE_MS = 14 * 60 * 60 * 1000; // 14 hours
 
-// 🕒 Auto-finish any old active check-in (without deleting)
+// ✅ Utility: Automatically finish any old active check-ins
 async function autoFinishOld(userId) {
-  const active = await CheckIn.findOne({
+  // Find all old active check-ins (for this user)
+  const activeCheckins = await CheckIn.find({
     user: userId,
     checkOutTime: null,
     autoFinished: false,
+    status: "active",
   });
 
-  if (!active) return null;
-
-  const elapsed = Date.now() - new Date(active.checkInTime).getTime();
-
-  // Agar 18 ghante se zyada ho gaye to auto finish karo
-  if (elapsed >= EXPIRE_MS) {
-    active.checkOutTime = new Date(active.checkInTime.getTime() + EXPIRE_MS);
-    active.autoFinished = true;
-    await active.save();
+  for (const checkin of activeCheckins) {
+    const elapsed = Date.now() - new Date(checkin.checkInTime).getTime();
+    if (elapsed >= EXPIRE_MS) {
+      // Auto-finish after 14 hours
+      checkin.checkOutTime = new Date(
+        new Date(checkin.checkInTime).getTime() + EXPIRE_MS
+      );
+      checkin.autoFinished = true;
+      checkin.status = "auto-finished";
+      await checkin.save();
+    }
   }
-
-  return active;
 }
 
-// 🟢 Create new check-in
+// ✅ Create new check-in
 export const createCheckin = async (req, res) => {
   try {
     const userId = req.userId;
 
-    // Pehle purana check-in auto-finish kar do
+    // Auto-close any old check-ins before creating a new one
     await autoFinishOld(userId);
 
-    // Check karo koi active (unfinished) check-in already to nahi hai
+    // Ensure no existing active check-in
     const existing = await CheckIn.findOne({
       user: userId,
       checkOutTime: null,
       autoFinished: false,
-    });
+      status: "active",
+    }).lean();
 
     if (existing) {
       return res.status(400).json({ message: "Already checked in." });
@@ -46,150 +49,129 @@ export const createCheckin = async (req, res) => {
 
     const { image, location } = req.body;
 
-    // Naya check-in create karo
     const newCheckin = await CheckIn.create({
       user: userId,
       image,
-      location,
+      location: location || null,
       checkInTime: new Date(),
       checkOutTime: null,
       autoFinished: false,
+      status: "active",
     });
 
-    // Employee ke record me check-in add karo
-    const employee = await Employee.findByIdAndUpdate(
-      userId,
-      { $push: { checkins: newCheckin._id } }, // 'checkins' field fix
-      { new: true }
-    );
+    await Employee.findByIdAndUpdate(userId, {
+      $push: { checkins: newCheckin._id },
+    });
 
-    if (!employee) {
-      return res.status(404).json({ message: "User not found for check-in" });
-    }
-
-    return res.status(200).json(newCheckin);
+    return res.status(201).json(newCheckin);
   } catch (error) {
-    console.error("createCheckin error:", error.message);
-    return res.status(500).json({
-      message: `Error in createCheckIn controller: ${error.message}`,
-    });
+    console.error("createCheckin error:", error);
+    return res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
-
+// ✅ Get currently active check-in for logged-in user
 export const getActive = async (req, res) => {
   try {
-    await autoFinishOld(req.userId);
+    const userId = req.userId;
+
+    // Auto-finish old active if expired
+    await autoFinishOld(userId);
 
     const active = await CheckIn.findOne({
-      user: req.userId,
+      user: userId,
       checkOutTime: null,
       autoFinished: false,
-    }).sort({ checkInTime: -1 });
+      status: "active",
+    })
+      .sort({ checkInTime: -1 })
+      .lean();
 
-    return res.status(200).json(active);
-  } catch (err) {
-    console.error("Get active error:", err.message);
-    res.status(500).json({ msg: "Server error" });
-  }
-};
-
-
-
- export const checkOut = async (req, res) => 
-  {
-  try {
-    const checkin = await CheckIn.findOne({
-      user: req.userId,
-      checkOutTime: null,
-      autoFinished: false,
-    });
-
-    if (!checkin) {
-      return res.status(400).json({ message: "No active check-in found" });
-    }
-
-    checkin.checkOutTime = new Date();
-    await checkin.save();
-
-    return res.status(200).json(checkin);
+    return res.status(200).json(active || null);
   } catch (error) {
-    console.log("Checkout error:", error.message);
-    return res.status(500).json({ message: `Error in logout controller: ${error.message}` });
+    console.error("getActive error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
-
-// 🟣 Manual Check-Out Controller
+// ✅ Manual checkout by user
 export const checkout = async (req, res) => {
   try {
     const userId = req.userId;
 
-    // Pehle active check-in dhoondo
-    const activeCheckin = await CheckIn.findOne({
+    // Always auto-finish before checkout
+    await autoFinishOld(userId);
+
+    const active = await CheckIn.findOne({
       user: userId,
       checkOutTime: null,
       autoFinished: false,
+      status: "active",
     });
 
-    if (!activeCheckin) {
-      return res.status(400).json({ message: "No active check-in found to check out." });
+    if (!active) {
+      return res.status(400).json({ message: "No active check-in found." });
     }
 
-    // Ab uska checkout time set karo (current time)
-    activeCheckin.checkOutTime = new Date();
-    activeCheckin.autoFinished = false; // manual checkout
-    await activeCheckin.save();
+    active.checkOutTime = new Date();
+    active.status = "checked-out";
+    await active.save();
 
-    return res.status(200).json({
-      message: "Checked out successfully!",
-      data: activeCheckin,
-    });
+    return res.status(200).json({ message: "Checked out successfully", data: active });
   } catch (error) {
-    console.error("checkout error:", error.message);
-    return res.status(500).json({
-      message: `Error in checkout controller: ${error.message}`,
-    });
+    console.error("checkout error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
 
+// ✅ Force checkout by ID (admin)
+export const forceCheckoutById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const checkin = await CheckIn.findById(id);
 
-// 🟢 Get all check-in history for logged-in user
+    if (!checkin) return res.status(404).json({ message: "Check-in not found" });
+    if (checkin.checkOutTime) return res.status(400).json({ message: "Already checked out" });
+
+    checkin.checkOutTime = new Date();
+    checkin.status = "checked-out";
+    checkin.autoFinished = false;
+    await checkin.save();
+
+    return res.status(200).json({ message: "Forced checkout successful", data: checkin });
+  } catch (error) {
+    console.error("forceCheckoutById error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// ✅ Get user's full check-in history
 export const getCheckinHistory = async (req, res) => {
   try {
     const userId = req.userId;
 
-    const employee = await Employee.findById(userId).select("name email");
-    if (!employee) {
-      return res.status(404).json({ message: "Employee not found" });
-    }
+    await autoFinishOld(userId); // keep records updated
 
-    // Find all check-ins for this employee, sorted by newest first
+    const employee = await Employee.findById(userId).select("name email").lean();
+    if (!employee) return res.status(404).json({ message: "Employee not found" });
+
     const history = await CheckIn.find({ user: userId })
       .sort({ checkInTime: -1 })
       .lean();
 
-    // Combine employee info with each check-in record
     const result = history.map((h) => ({
+      _id: h._id,
       name: employee.name,
       email: employee.email,
       checkInTime: h.checkInTime,
       checkOutTime: h.checkOutTime,
-      status: h.checkOutTime
-        ? "Checked Out"
-        : h.autoFinished
-        ? "Auto Finished"
-        : "Active",
+      status: h.status,
       location: h.location,
     }));
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error("getCheckinHistory error:", error.message);
-    return res.status(500).json({
-      message: `Error in getCheckinHistory controller: ${error.message}`,
-    });
+    console.error("getCheckinHistory error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 };
-
-

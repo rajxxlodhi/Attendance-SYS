@@ -24,6 +24,8 @@ const employeeSchema = new mongoose.Schema({
       ref:"CheckIn",
       
     },
+    checkins: [{ type: mongoose.Schema.Types.ObjectId, ref: "CheckIn" }],
+    
   createdAt:
    { type: Date, default: Date.now },
 });

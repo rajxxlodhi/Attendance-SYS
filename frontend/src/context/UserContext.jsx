@@ -27,6 +27,7 @@ function UserContext({children}) {
          let result = await axios.get("http://localhost:5000/api/auth/logout",{withCredentials:true})
           console.log("Logout Successfully")
          navigate("/login")
+         setUserData(null)
       } catch (error) {
         setUserData(null) 
         console.log(error)

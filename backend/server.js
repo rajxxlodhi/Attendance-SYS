@@ -4,15 +4,17 @@ import cors from 'cors';
 import connectDB from "./config/db.js";
 import authRoutes from './routes/authRoutes.js';
 import userRouter from './routes/userRoutes.js';
-import attendancRouter from './routes/attendanceRoutes.js';
+// import attendancRouter from './routes/attendanceRoutes.js';
 import cookieParser from 'cookie-parser'; 
 import checkinRouter from './routes/checkinRouter.js';
+import adminRouter from './routes/adminRouter.js';
+import { app, server } from './socket/socket.js';
 
 
 dotenv.config();
 connectDB();
 
-const app = express();
+
 app.use(express.json());
 app.use(cookieParser()); 
 app.use(cors({
@@ -21,9 +23,10 @@ app.use(cors({
 }))
 
 app.use("/api/auth", authRoutes);
-app.use("/api/attendance", attendancRouter);
+// app.use("/api/attendance", attendancRouter);
 app.use("/api/user",userRouter)
 app.use("/api/check", checkinRouter )
+app.use("/api/admin", adminRouter )
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

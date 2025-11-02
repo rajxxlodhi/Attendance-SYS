@@ -7,7 +7,7 @@ function CheckInForm() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const navigate = useNavigate();
-  const { setActive } = useContext(checkinDataContext); // ✅ use context
+  const { setActive } = useContext(checkinDataContext);
 
   const [stream, setStream] = useState(null);
   const [captured, setCaptured] = useState(null);
@@ -36,20 +36,25 @@ function CheckInForm() {
     const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
     setCaptured(dataUrl);
 
-    if (stream) stream.getTracks().forEach(track => track.stop());
+    if (stream) stream.getTracks().forEach((track) => track.stop());
     setCameraActive(false);
   };
 
   const getLocation = () => {
     if (!navigator.geolocation) return alert("Geolocation not supported");
     navigator.geolocation.getCurrentPosition(
-      pos => setLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-      err => alert("Location error: " + err.message)
+      (pos) =>
+        setLocation({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        }),
+      (err) => alert("Location error: " + err.message)
     );
   };
 
   const submit = async () => {
-    if (!captured || !location) return alert("Capture photo and location first");
+    if (!captured || !location)
+      return alert("Please capture a photo and get location before submitting.");
     try {
       setLoading(true);
       const res = await axios.post(
@@ -57,10 +62,9 @@ function CheckInForm() {
         { image: captured, location },
         { withCredentials: true }
       );
-      console.log(res.data)
       alert("✅ Check-in successful!");
-     setActive(res.data.newCheckin || res.data);// ✅ update context immediately
-      navigate("/"); // redirect to dashboard
+      setActive(res.data.newCheckin || res.data);
+      navigate("/");
     } catch (err) {
       console.error(err);
       alert(err.response?.data?.message || "❌ Check-in failed");
@@ -70,24 +74,87 @@ function CheckInForm() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center p-6 bg-white shadow-md rounded-2xl max-w-md mx-auto mt-10 border border-gray-200">
-      <h2 className="text-2xl font-bold mb-6 text-gray-800 text-center">Employee Daily Check-In</h2>
+    <div className="flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 bg-white shadow-md rounded-2xl max-w-sm sm:max-w-md md:max-w-lg mx-auto mt-10 border border-gray-200">
+      <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-6 text-gray-800 text-center leading-snug">
+        Employee Daily Check-In
+      </h2>
 
-      {/* Buttons */}
-      <div className="flex flex-wrap justify-center gap-3 mb-6">
-        {!cameraActive && !captured && <button onClick={startCamera} className="px-5 py-2 bg-blue-500 text-white rounded-lg">Open Camera</button>}
-        {cameraActive && <button onClick={capture} className="px-5 py-2 bg-green-500 text-white rounded-lg">Capture Photo</button>}
-        <button onClick={getLocation} className="px-5 py-2 bg-yellow-500 text-white rounded-lg">Get Location</button>
-        {captured && <button onClick={() => { setCaptured(null); startCamera(); }} className="px-5 py-2 bg-gray-500 text-white rounded-lg">Retake Photo</button>}
+      {/* Action Buttons */}
+      <div className="flex flex-wrap justify-center gap-3 sm:gap-4 mb-6 w-full">
+        {!cameraActive && !captured && (
+          <button
+            onClick={startCamera}
+            className="w-full sm:w-auto px-4 sm:px-5 py-2 bg-blue-500 text-white rounded-lg text-sm sm:text-base font-medium hover:bg-blue-600 transition"
+          >
+            Open Camera
+          </button>
+        )}
+        {cameraActive && (
+          <button
+            onClick={capture}
+            className="w-full sm:w-auto px-4 sm:px-5 py-2 bg-green-500 text-white rounded-lg text-sm sm:text-base font-medium hover:bg-green-600 transition"
+          >
+            Capture Photo
+          </button>
+        )}
+        <button
+          onClick={getLocation}
+          className="w-full sm:w-auto px-4 sm:px-5 py-2 bg-yellow-500 text-white rounded-lg text-sm sm:text-base font-medium hover:bg-yellow-600 transition"
+        >
+          Get Location
+        </button>
+        {captured && (
+          <button
+            onClick={() => {
+              setCaptured(null);
+              startCamera();
+            }}
+            className="w-full sm:w-auto px-4 sm:px-5 py-2 bg-gray-500 text-white rounded-lg text-sm sm:text-base font-medium hover:bg-gray-600 transition"
+          >
+            Retake Photo
+          </button>
+        )}
       </div>
 
-      <video ref={videoRef} className={`rounded-lg w-[320px] h-[240px] ${cameraActive ? "block" : "hidden"}`} autoPlay></video>
+      {/* Video Preview */}
+      <video
+        ref={videoRef}
+        className={`rounded-lg w-full max-w-[320px] sm:max-w-[400px] h-auto aspect-video ${
+          cameraActive ? "block" : "hidden"
+        }`}
+        autoPlay
+      ></video>
+
       <canvas ref={canvasRef} className="hidden"></canvas>
 
-      {captured && <img src={captured} alt="Captured Preview" className="rounded-lg w-[320px] mt-5"/>}
-      {location && <p className="mt-4 text-gray-700 w-full text-nowrap">Latitude: {location.latitude}, Longitude: {location.longitude}</p>}
+      {/* Captured Image Preview */}
+      {captured && (
+        <img
+          src={captured}
+          alt="Captured Preview"
+          className="rounded-lg w-full max-w-[320px] sm:max-w-[400px] mt-5 object-cover"
+        />
+      )}
 
-      {captured && location && <button onClick={submit} disabled={loading} className="mt-6 px-8 py-3 bg-indigo-600 text-white rounded-lg">{loading ? "Checking In..." : "Submit Check-In"}</button>}
+      {/* Location */}
+      {location && (
+        <p className="mt-4 text-gray-700 text-sm sm:text-base text-center break-words">
+          <span className="font-semibold">Latitude:</span> {location.latitude}
+          <br />
+          <span className="font-semibold">Longitude:</span> {location.longitude}
+        </p>
+      )}
+
+      {/* Submit Button */}
+      {captured && location && (
+        <button
+          onClick={submit}
+          disabled={loading}
+          className="mt-6 w-full sm:w-auto px-6 sm:px-8 py-2.5 sm:py-3 bg-indigo-600 text-white rounded-lg text-sm sm:text-base font-medium hover:bg-indigo-700 transition disabled:opacity-60"
+        >
+          {loading ? "Checking In..." : "Submit Check-In"}
+        </button>
+      )}
     </div>
   );
 }

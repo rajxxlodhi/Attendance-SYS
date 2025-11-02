@@ -13,49 +13,22 @@ const Register = () => {
     secretKey: "",
   });
 
-  const primaryColor = "#3B82F6";
   const [role, setRole] = useState("employee");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const navigate = useNavigate();
-   let {setUserData} = useContext(userDataContext)
+  const { setUserData } = useContext(userDataContext);
+
+  const primaryColor = "#3B82F6";
+  const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+  const ADMIN_KEY = import.meta.env.VITE_ADMIN_KEY;
 
   // Handle input change
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
-  
-  let key = import.meta.env.VITE_ADMIN_KEY
-  // Handle submit
-  const handleSubmit = async (e) => {
-    e.preventDefault();
 
-    // Check secret key only for admin
-    if (role === "admin" && formData.secretKey != key ) {
-      toast.error("Invalid Admin Secret Key");
-      return; // Stop submission
-    }
-
-    setLoading(true);
-    try {
-      const res = await axios.post("http://localhost:5000/api/auth/register", {
-        ...formData,
-        role,
-      },{withCredentials:true});
-
-      toast.success("Registration successful!");
-      navigate("/");
-      setUserData(res.data)
-      console.log(res.data);
-    } catch (err) {
-      console.error(err);
-      toast.error(err.response?.data?.message || "Registration failed");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle role change (auto clear secretKey when switching to employee)
+  // Handle role change (auto clear secretKey for employee)
   const handleRoleChange = (selectedRole) => {
     setRole(selectedRole);
     if (selectedRole === "employee") {
@@ -63,13 +36,42 @@ const Register = () => {
     }
   };
 
+  // Submit form
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (role === "admin" && formData.secretKey !== ADMIN_KEY) {
+      toast.error("Invalid Admin Secret Key");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await axios.post(
+        `${BASE_URL}/api/auth/register`,
+        { ...formData, role },
+        { withCredentials: true }
+      );
+
+      toast.success("Registration successful!");
+      setUserData(res.data);
+      navigate("/");
+      console.log("✅ Registered User:", res.data);
+    } catch (err) {
+      console.error("❌ Registration Error:", err);
+      toast.error(err.response?.data?.message || "Registration failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-blue-400 to-indigo-600">
+    <div className="flex items-center justify-center min-h-screen bg-gradient-to-r from-blue-400 to-indigo-600 px-4 sm:px-6">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md"
+        className="bg-white p-6 sm:p-8 rounded-2xl shadow-xl w-full max-w-md md:max-w-lg"
       >
-        <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">
+        <h2 className="text-2xl sm:text-3xl font-bold mb-6 text-center text-gray-800">
           {role === "admin" ? "Admin Registration" : "Employee Registration"}
         </h2>
 
@@ -83,7 +85,7 @@ const Register = () => {
             name="name"
             value={formData.name}
             onChange={handleChange}
-            className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none"
+            className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none text-sm sm:text-base"
             placeholder="Enter your name"
             required
           />
@@ -97,7 +99,7 @@ const Register = () => {
             name="email"
             value={formData.email}
             onChange={handleChange}
-            className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none"
+            className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none text-sm sm:text-base"
             placeholder="Enter your email"
             required
           />
@@ -113,7 +115,7 @@ const Register = () => {
             name="password"
             value={formData.password}
             onChange={handleChange}
-            className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none"
+            className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none text-sm sm:text-base"
             placeholder="Enter your password"
             required
           />
@@ -129,7 +131,7 @@ const Register = () => {
         <div className="mb-4">
           <label
             htmlFor="role"
-            className="block text-gray-700 font-medium mb-1"
+            className="block text-gray-700 font-medium mb-2"
           >
             Role
           </label>
@@ -138,16 +140,12 @@ const Register = () => {
               <button
                 key={index}
                 type="button"
-                className="flex-1 rounded-lg border px-3 py-2 text-center font-medium transition-colors cursor-pointer"
                 onClick={() => handleRoleChange(r)}
-                style={
+                className={`flex-1 py-2 rounded-lg border font-medium transition-all ${
                   role === r
-                    ? { backgroundColor: primaryColor, color: "white" }
-                    : {
-                        border: `1px solid ${primaryColor}`,
-                        color: primaryColor,
-                      }
-                }
+                    ? "bg-blue-600 text-white"
+                    : "border-blue-600 text-blue-600 hover:bg-blue-50"
+                }`}
               >
                 {r}
               </button>
@@ -166,9 +164,9 @@ const Register = () => {
               name="secretKey"
               value={formData.secretKey}
               onChange={handleChange}
-              className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none"
+              className="w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-400 outline-none text-sm sm:text-base"
               placeholder="Enter admin secret key"
-              required={role === "admin"}
+              required
             />
           </div>
         )}
@@ -185,11 +183,14 @@ const Register = () => {
         </button>
 
         {/* Login Link */}
-        <p className="mt-4 text-center text-gray-600">
+        <p className="mt-4 text-center text-gray-600 text-sm sm:text-base">
           Already have an account?{" "}
-          <a onClick={()=>navigate("/login")} className="text-blue-600 font-medium hover:underline cursor-pointer">
+          <span
+            onClick={() => navigate("/login")}
+            className="text-blue-600 font-medium hover:underline cursor-pointer"
+          >
             Login
-          </a>
+          </span>
         </p>
       </form>
     </div>

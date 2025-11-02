@@ -26,7 +26,8 @@ const checkInSchema = new mongoose.Schema({
   autoFinished: {
     type: Boolean,
     default: false
-  }
+  },
+  status: { type: String, enum: ["active", "checked-out", "auto-finished"], default: "active" }
 }, { timestamps: true });
 
 const CheckIn = mongoose.model("CheckIn", checkInSchema);

@@ -1,0 +1,12 @@
+import express from "express";
+import { getAllCheckins, getAllEmployees, getUserCheckinHistory } from "../controllers/adminController.js";
+import isAuth from "../middleware/isAuth.js";
+
+const adminRouter = express.Router();
+
+// 🔒 Protected routes
+adminRouter.get("/checkins", isAuth, getAllCheckins);
+adminRouter.get("/employees", isAuth, getAllEmployees);
+adminRouter.get("/history/:userId", isAuth, getUserCheckinHistory);
+
+export default adminRouter;
