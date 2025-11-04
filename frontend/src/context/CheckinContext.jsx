@@ -1,8 +1,8 @@
-// src/context/CheckinContext.jsx
 import React, { createContext, useContext, useEffect, useState } from "react";
 import axios from "axios";
 import { userDataContext } from "./UserContext";
-import { socketDataContext } from "./SocketCOntext";
+import { socketDataContext } from "./SocketContext";
+// import { socketDataContext } from "./SocketCOntext";
 
 export const checkinDataContext = createContext();
 
@@ -11,18 +11,23 @@ function CheckinContext({ children }) {
   const socket = useContext(socketDataContext);
   const [active, setActive] = useState(null);
 
+  // Fetch active check-in (from server: image now always URL)
   const fetchActive = async () => {
     try {
       const res = await axios.get("http://localhost:5000/api/check/active", {
         withCredentials: true,
       });
       setActive(res.data);
+      if (res.data) localStorage.setItem("activeCheckin", JSON.stringify(res.data));
+      else localStorage.removeItem("activeCheckin");
     } catch (err) {
       console.error("Active fetch error:", err);
       setActive(null);
+      localStorage.removeItem("activeCheckin");
     }
   };
 
+  // Handle check-in (image = base64), backend stores & responds with cloudinary url
   const handleCheckIn = async (image, location) => {
     try {
       const res = await axios.post(
@@ -75,6 +80,7 @@ function CheckinContext({ children }) {
     }
   };
 
+  // Load from localStorage only on initial page load, after that always prefer API/data
   useEffect(() => {
     const saved = localStorage.getItem("activeCheckin");
     if (saved) setActive(JSON.parse(saved));

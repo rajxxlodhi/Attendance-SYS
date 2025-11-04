@@ -1,9 +1,14 @@
-// src/pages/CheckInForm.jsx
 import axios from "axios";
 import React, { useRef, useState, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import { checkinDataContext } from "../context/CheckinContext";
 
+/**
+ * Check-in Form
+ * - Camera capture (saved as base64)
+ * - Location fetch
+ * - Submits image (base64) & location to backend (where it's saved as Cloudinary image URL)
+ */
 function CheckInForm() {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -16,6 +21,7 @@ function CheckInForm() {
   const [cameraActive, setCameraActive] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  // Start camera stream
   const startCamera = async () => {
     try {
       setCameraActive(true);
@@ -28,6 +34,7 @@ function CheckInForm() {
     }
   };
 
+  // Capture photo from stream
   const capture = () => {
     if (!videoRef.current || !canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -41,6 +48,7 @@ function CheckInForm() {
     setCameraActive(false);
   };
 
+  // Fetch location from browser
   const getLocation = () => {
     if (!navigator.geolocation) return alert("Geolocation not supported");
     navigator.geolocation.getCurrentPosition(
@@ -53,19 +61,19 @@ function CheckInForm() {
     );
   };
 
+  // Submit form: send base64 image and location to backend
   const submit = async () => {
     if (!captured || !location)
       return alert("Please capture a photo and get location before submitting.");
     try {
       setLoading(true);
       const res = await axios.post(
-        "http://localhost:5000/api/check/checkin", // <<< corrected path
+        "http://localhost:5000/api/check/checkin",
         { image: captured, location },
         { withCredentials: true }
       );
       alert("✅ Check-in successful!");
-      // backend sends populated checkin; store active locally as the returned doc
-      setActive(res.data);
+      setActive(res.data); // Set the returned check-in as current active
       navigate("/");
     } catch (err) {
       console.error(err);
@@ -74,6 +82,14 @@ function CheckInForm() {
       setLoading(false);
     }
   };
+
+  // On unmount, stop camera stream if needed
+  React.useEffect(() => {
+    return () => {
+      if (stream) stream.getTracks().forEach((track) => track.stop());
+    };
+    // eslint-disable-next-line
+  }, []);
 
   return (
     <div className="flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 bg-white shadow-md rounded-2xl max-w-sm sm:max-w-md md:max-w-lg mx-auto mt-10 border border-gray-200">
@@ -108,6 +124,7 @@ function CheckInForm() {
           <button
             onClick={() => {
               setCaptured(null);
+              setLocation(null);
               startCamera();
             }}
             className="w-full sm:w-auto px-4 sm:px-5 py-2 bg-gray-500 text-white rounded-lg text-sm sm:text-base font-medium hover:bg-gray-600 transition"

@@ -1,4 +1,3 @@
-// src/context/SocketContext.jsx
 import React, { createContext, useEffect, useState } from "react";
 import { io } from "socket.io-client";
 
@@ -8,7 +7,6 @@ const SocketContextProvider = ({ children }) => {
   const [socket, setSocket] = useState(null);
 
   useEffect(() => {
-    // ✅ Connect to backend socket server
     const newSocket = io("http://localhost:5000", {
       withCredentials: true,
       transports: ["websocket"],
@@ -29,11 +27,7 @@ const SocketContextProvider = ({ children }) => {
     };
   }, []);
 
-  return (
-    <socketDataContext.Provider value={socket}>
-      {children}
-    </socketDataContext.Provider>
-  );
+  return <socketDataContext.Provider value={socket}>{children}</socketDataContext.Provider>;
 };
 
 export default SocketContextProvider;

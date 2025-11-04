@@ -11,6 +11,7 @@ import UserHistory from "./pages/UserHistory.jsx";
 import AllEmployes from "./pages/AllEmployes.jsx";
 import { useEffect } from "react";
 import {io} from "socket.io-client"
+import EmployeeDetails from "./pages/EmployeeDetails.jsx";
 
 function App() {
   const { userData } = useContext(userDataContext);
@@ -27,6 +28,7 @@ function App() {
             <Route path="/history" element={userData ? <CheckinHistory /> : <Navigate to="/login" />}/>
             <Route path="/history/:id" element={userData ? <UserHistory /> : <Navigate to="/login" />}/>
             <Route path="/allEmployes"element={<AllEmployes />}/>
+            <Route path="/employee/:checkinId" element={<EmployeeDetails />} />
             
       </Routes>
     </>

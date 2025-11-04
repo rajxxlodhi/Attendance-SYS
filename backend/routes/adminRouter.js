@@ -1,5 +1,5 @@
 import express from "express";
-import { getAllCheckins, getAllEmployees, getUserCheckinHistory } from "../controllers/adminController.js";
+import { getAllCheckins, getAllEmployees, getSingleCheckin, getUserCheckinHistory } from "../controllers/adminController.js";
 import isAuth from "../middleware/isAuth.js";
 
 const adminRouter = express.Router();
@@ -8,5 +8,7 @@ const adminRouter = express.Router();
 adminRouter.get("/checkins", isAuth, getAllCheckins);
 adminRouter.get("/employees", isAuth, getAllEmployees);
 adminRouter.get("/history/:userId", isAuth, getUserCheckinHistory);
+adminRouter.get("/checkin/:checkinId", isAuth, getSingleCheckin);
+
 
 export default adminRouter;

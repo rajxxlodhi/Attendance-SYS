@@ -1,6 +1,7 @@
 import express from "express";
 import isAuth from "../middleware/isAuth.js";
 import {   checkout, createCheckin, getActive, getCheckinHistory } from "../controllers/checkinController.js";
+import upload from "../middleware/multer.js";
 
 const checkinRouter = express.Router();
 

@@ -92,3 +92,21 @@ export const getUserCheckinHistory = async (req, res) => {
   }
 };
 
+// ✅ Get a single check-in detail
+export const getSingleCheckin = async (req, res) => {
+  try {
+    const { checkinId } = req.params;
+
+    const checkin = await CheckIn.findById(checkinId).populate("user", "name email role");
+    if (!checkin) {
+      return res.status(404).json({ message: "Check-in not found" });
+    }
+
+    res.status(200).json(checkin);
+  } catch (error) {
+    console.error("Error fetching check-in:", error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+

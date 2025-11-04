@@ -1,10 +1,11 @@
+import uploadOnCloudinary from "../config/cloudinary.js";
 import CheckIn from "../models/CheckinModel.js";
 import Employee from "../models/Employee.js";
-
-import { io } from "../socket/socket.js"; // <- import io
+import { io } from "../socket/socket.js";
 
 const EXPIRE_MS = 14 * 60 * 60 * 1000; // 14 hours
 
+// Auto-finish old check-ins & emit real-time updates
 async function autoFinishOld(userId) {
   const activeCheckins = await CheckIn.find({
     user: userId,
@@ -16,12 +17,21 @@ async function autoFinishOld(userId) {
   for (const checkin of activeCheckins) {
     const elapsed = Date.now() - new Date(checkin.checkInTime).getTime();
     if (elapsed >= EXPIRE_MS) {
-      checkin.checkOutTime = new Date(
-        new Date(checkin.checkInTime).getTime() + EXPIRE_MS
-      );
+      checkin.checkOutTime = new Date(new Date(checkin.checkInTime).getTime() + EXPIRE_MS);
       checkin.autoFinished = true;
       checkin.status = "auto-finished";
       await checkin.save();
+
+      // Emit event so Admin dashboard updates in real-time
+      try {
+        io.emit("autoFinishCheckin", {
+          userId,
+          checkInId: checkin._id,
+          status: checkin.status,
+        });
+      } catch (err) {
+        console.error("Socket emit error in autoFinishOld:", err);
+      }
     }
   }
 }
@@ -47,9 +57,16 @@ export const createCheckin = async (req, res) => {
 
     const { image, location } = req.body;
 
+    let imageUrl = "";
+    if (typeof image === "string" && image.startsWith("data:image")) {
+      imageUrl = await uploadOnCloudinary(image);
+    } else if (typeof image === "string") {
+      imageUrl = image;
+    }
+
     const newCheckin = await CheckIn.create({
       user: userId,
-      image,
+      image: imageUrl,
       location: location || null,
       checkInTime: new Date(),
       checkOutTime: null,
@@ -61,17 +78,10 @@ export const createCheckin = async (req, res) => {
       $push: { checkins: newCheckin._id },
     });
 
-    // Populate minimal user info for the emitted payload
-    const populated = await CheckIn.findById(newCheckin._id)
-      .populate("user", "name email")
-      .lean();
+    const populated = await CheckIn.findById(newCheckin._id).populate("user", "name email").lean();
 
-    // 🔥 Emit real-time event to all connected clients (admins will listen)
-    try {
-      io.emit("newCheckin", populated);
-    } catch (emitErr) {
-      console.error("Socket emit error:", emitErr);
-    }
+    // Emit new check-in event to all admins
+    io.emit("newCheckin", populated);
 
     return res.status(201).json(populated);
   } catch (error) {
@@ -80,12 +90,9 @@ export const createCheckin = async (req, res) => {
   }
 };
 
-// ✅ Get currently active check-in for logged-in user
 export const getActive = async (req, res) => {
   try {
     const userId = req.userId;
-
-    // Auto-finish old active if expired
     await autoFinishOld(userId);
 
     const active = await CheckIn.findOne({
@@ -103,7 +110,6 @@ export const getActive = async (req, res) => {
     return res.status(500).json({ message: "Server error" });
   }
 };
-
 
 export const checkout = async (req, res) => {
   try {
@@ -123,10 +129,11 @@ export const checkout = async (req, res) => {
     active.status = "checked-out";
     await active.save();
 
+    // Notify admin dashboard instantly
     io.emit("employeeCheckedOut", {
       userId,
       checkInId: active._id,
-    }); // 🔥 instantly remove from admin dashboard
+    });
 
     return res.status(200).json({
       message: "Checked out successfully",
@@ -138,7 +145,6 @@ export const checkout = async (req, res) => {
   }
 };
 
-// ✅ Force checkout by ID (admin)
 export const forceCheckoutById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -152,6 +158,8 @@ export const forceCheckoutById = async (req, res) => {
     checkin.autoFinished = false;
     await checkin.save();
 
+    io.emit("employeeCheckedOut", { checkInId: checkin._id });
+
     return res.status(200).json({ message: "Forced checkout successful", data: checkin });
   } catch (error) {
     console.error("forceCheckoutById error:", error);
@@ -159,19 +167,16 @@ export const forceCheckoutById = async (req, res) => {
   }
 };
 
-// ✅ Get user's full check-in history
 export const getCheckinHistory = async (req, res) => {
   try {
     const userId = req.userId;
 
-    await autoFinishOld(userId); // keep records updated
+    await autoFinishOld(userId);
 
     const employee = await Employee.findById(userId).select("name email").lean();
     if (!employee) return res.status(404).json({ message: "Employee not found" });
 
-    const history = await CheckIn.find({ user: userId })
-      .sort({ checkInTime: -1 })
-      .lean();
+    const history = await CheckIn.find({ user: userId }).sort({ checkInTime: -1 }).lean();
 
     const result = history.map((h) => ({
       _id: h._id,
@@ -181,11 +186,28 @@ export const getCheckinHistory = async (req, res) => {
       checkOutTime: h.checkOutTime,
       status: h.status,
       location: h.location,
+      image: h.image,
     }));
 
     return res.status(200).json(result);
   } catch (error) {
     console.error("getCheckinHistory error:", error);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+// Admin helper: get all checkins (for /api/admin/checkins)
+export const getAllCheckinsForAdmin = async (req, res) => {
+  try {
+    // optionally verify admin role here if your isAuth doesn't include role check
+    const all = await CheckIn.find({})
+      .sort({ checkInTime: -1 })
+      .populate("user", "name email")
+      .lean();
+
+    return res.status(200).json(all);
+  } catch (err) {
+    console.error("getAllCheckinsForAdmin error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };

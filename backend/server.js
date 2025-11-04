@@ -15,7 +15,8 @@ dotenv.config();
 connectDB();
 
 
-app.use(express.json());
+app.use(express.json({ limit: "12mb" })); // increased limit
+app.use(express.urlencoded({ limit: "12mb", extended: true }));
 app.use(cookieParser()); 
 app.use(cors({
     origin:"http://localhost:5173",
