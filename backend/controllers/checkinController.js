@@ -22,13 +22,15 @@ async function autoFinishOld(userId) {
       checkin.status = "auto-finished";
       await checkin.save();
 
-      // Emit event so Admin dashboard updates in real-time
+      // ✅ NEW REAL-TIME LOGIC: Fetch populated data and emit 'updateCheckin'
+      const populatedCheckin = await CheckIn.findById(checkin._id)
+        .populate("user", "name email")
+        .lean();
+
       try {
-        io.emit("autoFinishCheckin", {
-          userId,
-          checkInId: checkin._id,
-          status: checkin.status,
-        });
+        // Emit the full updated object using the existing 'updateCheckin' event
+        // This is caught by both Admin and Employee dashboards
+        io.emit("updateCheckin", populatedCheckin);
       } catch (err) {
         console.error("Socket emit error in autoFinishOld:", err);
       }
@@ -93,7 +95,8 @@ export const createCheckin = async (req, res) => {
 export const getActive = async (req, res) => {
   try {
     const userId = req.userId;
-    await autoFinishOld(userId);
+    // Call autoFinishOld to update DB state just before fetching active status
+    await autoFinishOld(userId); 
 
     const active = await CheckIn.findOne({
       user: userId,
@@ -129,8 +132,8 @@ export const checkout = async (req, res) => {
     active.status = "checked-out";
     await active.save();
 
-    // Notify admin dashboard instantly
-    io.emit("employeeCheckedOut", {
+    // Notify admin dashboard instantly that a check-in is complete (can use 'updateCheckin' or 'employeeCheckedOut')
+    io.emit("employeeCheckedOut", { 
       userId,
       checkInId: active._id,
     });
@@ -158,6 +161,7 @@ export const forceCheckoutById = async (req, res) => {
     checkin.autoFinished = false;
     await checkin.save();
 
+    // Notify all listeners that this specific check-in is now complete
     io.emit("employeeCheckedOut", { checkInId: checkin._id });
 
     return res.status(200).json({ message: "Forced checkout successful", data: checkin });

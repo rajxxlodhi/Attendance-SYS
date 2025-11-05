@@ -2,136 +2,189 @@ import React, { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import axios from "axios";
 import { FaArrowLeftLong } from "react-icons/fa6";
-import { motion } from "framer-motion";
+// Removed: import { motion } from "framer-motion";
 
 function EmployeeDetails() {
   const { checkinId } = useParams();
   const [checkin, setCheckin] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null); // Added state for error handling
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchCheckinDetails = async () => {
+      setLoading(true);
+      setError(null);
       try {
         const res = await axios.get(`http://localhost:5000/api/admin/checkin/${checkinId}`, {
           withCredentials: true,
         });
         setCheckin(res.data);
-      } catch (error) {
-        console.error("Error fetching checkin details:", error);
+      } catch (err) {
+        console.error("Error fetching checkin details:", err);
+        setError("Could not load check-in details. The ID may be invalid.");
+      } finally {
+        setLoading(false);
       }
     };
     fetchCheckinDetails();
   }, [checkinId]);
 
-  if (!checkin)
+  const renderStatusBadge = (status) => {
+    const lowerStatus = status?.toLowerCase();
+    let colorClass = "bg-gray-100 text-gray-700";
+
+    if (lowerStatus === "active") {
+      colorClass = "bg-green-100 text-green-700 ring-1 ring-green-300";
+    } else if (lowerStatus === "checked-out") {
+      colorClass = "bg-blue-100 text-blue-700 ring-1 ring-blue-300";
+    } else if (lowerStatus === "auto-finished") {
+      colorClass = "bg-yellow-100 text-yellow-700 ring-1 ring-yellow-300";
+    }
+
+    return (
+      <span
+        className={`px-3 py-1.5 rounded-full font-semibold text-xs sm:text-sm shadow-sm ${colorClass}`}
+      >
+        {status}
+      </span>
+    );
+  };
+
+  const renderLocation = (loc) => {
+    if (!loc) return "Not Available";
+    if (typeof loc === "object") {
+      return loc.address || `Lat: ${loc.latitude}, Long: ${loc.longitude}`;
+    }
+    return loc || "Not Available";
+  };
+
+  const formatDate = (dateVal) => {
+    return dateVal ? new Date(dateVal).toLocaleString() : "—";
+  };
+
+  if (loading)
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-50">
-        <p className="text-gray-600 text-lg animate-pulse">Loading employee details...</p>
+        <div className="flex flex-col items-center">
+          <svg className="animate-spin h-6 w-6 text-red-500 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <p className="text-gray-600 text-lg">Loading employee details...</p>
+        </div>
       </div>
     );
+  
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+        <p className="text-red-600 text-lg p-8 border border-red-200 bg-red-50 rounded-lg shadow-md">{error}</p>
+      </div>
+    );
+  }
+
+  if (!checkin) {
+    // Should be covered by error handling, but good fallback
+    return (
+      <div className="flex justify-center items-center min-h-screen bg-gray-50">
+        <p className="text-gray-600 text-lg">Check-in data not found.</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 px-4 sm:px-6 md:px-10 py-8">
+    <div className="min-h-screen bg-gray-100 px-4 sm:px-6 md:px-10 py-10">
       {/* Back Button */}
       <button
         onClick={() => navigate(-1)}
-        className="flex items-center gap-2 text-gray-700 hover:text-red-600 transition-all mb-6 font-medium text-base sm:text-lg"
+        className="group flex items-center gap-2 text-gray-700 hover:text-red-600 transition-all mb-8 font-semibold text-base sm:text-lg focus:outline-none"
       >
-        <FaArrowLeftLong className="transition-transform duration-300 group-hover:-translate-x-1" /> 
-        Back
+        <FaArrowLeftLong className="transition-transform duration-300 group-hover:-translate-x-1" />
+        Back to Dashboard
       </button>
 
-      {/* Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5 }}
-        className="max-w-3xl mx-auto bg-white rounded-3xl shadow-xl border border-gray-200 overflow-hidden hover:shadow-2xl transition-shadow duration-300"
+      {/* Main Detail Card */}
+      <div
+        className="max-w-4xl mx-auto bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
       >
-        {/* Top Section */}
-        <div className="flex flex-col items-center gap-4 sm:gap-6 py-8 px-6 border-b border-gray-100 bg-gradient-to-b from-gray-50 to-white">
-          <motion.img
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ duration: 0.5 }}
-            src={checkin.image || "https://via.placeholder.com/100?text=No+Img"}
-            alt="Employee"
-            className="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-gray-200 object-cover shadow-md"
-          />
-          <div className="text-center">
-            <h2 className="text-2xl sm:text-3xl font-bold text-gray-800 tracking-wide">
-              {checkin.user?.name || "Unknown"}
-            </h2>
-            <p className="text-gray-600 mt-1 text-sm sm:text-base">
-              {checkin.user?.email || "No Email"}
+        {/* Header Section */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-8 border-b border-gray-200 bg-red-50/50">
+          <div className="md:col-span-1 flex justify-center items-start">
+            <img
+              src={checkin.image || "https://via.placeholder.com/120?text=No+Image"}
+              alt="Employee Check-in"
+              className="w-36 h-36 rounded-full border-4 border-white shadow-lg object-cover"
+            />
+          </div>
+          
+          <div className="md:col-span-2 text-center md:text-left pt-2">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
+              {checkin.user?.name || "Employee Not Found"}
+            </h1>
+            <p className="text-xl text-gray-600 mt-1">
+              {checkin.user?.email || "No Email Address"}
             </p>
+            <div className="mt-4">
+              <strong className="text-gray-700 text-lg">Current Status: </strong>
+              {renderStatusBadge(checkin.status)}
+            </div>
           </div>
         </div>
 
-        {/* Details Section */}
-        <div className="p-6 sm:p-8 space-y-4 sm:space-y-5 text-gray-700 text-sm sm:text-base">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1 }}
-            className="flex items-center justify-between border-b border-gray-100 pb-3"
-          >
-            <strong className="text-gray-800">Status:</strong>
-            <span
-              className={`px-3 py-1.5 rounded-full font-semibold text-xs sm:text-sm shadow-sm ${
-                checkin.status?.toLowerCase() === "active"
-                  ? "bg-green-100 text-green-700"
-                  : "bg-blue-100 text-blue-700"
-              }`}
-            >
-              {checkin.status}
-            </span>
-          </motion.div>
+        {/* Detailed Information Section */}
+        <div className="p-6 sm:p-8 space-y-6">
+          <h2 className="text-2xl font-bold text-gray-800 border-b pb-3 mb-4">Attendance Log</h2>
+          
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-10 gap-y-6">
+            
+            {/* Check-In Time */}
+            <div className="border-l-4 border-green-500 pl-4">
+              <dt className="text-sm font-medium text-gray-500 uppercase">Check-In Time</dt>
+              <dd className="mt-1 text-lg font-semibold text-gray-900">
+                {formatDate(checkin.checkInTime)}
+              </dd>
+            </div>
 
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.2 }}
-            className="flex items-center justify-between border-b border-gray-100 pb-3"
-          >
-            <strong className="text-gray-800">Check-In Time:</strong>
-            <span className="text-gray-600 font-medium">
-              {checkin.checkInTime ? new Date(checkin.checkInTime).toLocaleString() : "—"}
-            </span>
-          </motion.div>
+            {/* Check-Out Time */}
+            <div className={`border-l-4 pl-4 ${checkin.checkOutTime ? 'border-red-500' : 'border-gray-300'}`}>
+              <dt className="text-sm font-medium text-gray-500 uppercase">Check-Out Time</dt>
+              <dd className="mt-1 text-lg font-semibold text-gray-900">
+                {formatDate(checkin.checkOutTime)}
+              </dd>
+            </div>
+            
+            {/* Auto-Finished Flag */}
+            <div className="border-l-4 border-gray-300 pl-4">
+              <dt className="text-sm font-medium text-gray-500 uppercase">Auto-Finished</dt>
+              <dd className={`mt-1 text-lg font-semibold ${checkin.autoFinished ? 'text-yellow-600' : 'text-gray-900'}`}>
+                {checkin.autoFinished ? "Yes" : "No"}
+              </dd>
+            </div>
 
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className="flex items-center justify-between border-b border-gray-100 pb-3"
-          >
-            <strong className="text-gray-800">Check-Out Time:</strong>
-            <span className="text-gray-600 font-medium">
-              {checkin.checkOutTime ? new Date(checkin.checkOutTime).toLocaleString() : "—"}
-            </span>
-          </motion.div>
+            {/* Record ID */}
+            <div className="border-l-4 border-gray-300 pl-4">
+              <dt className="text-sm font-medium text-gray-500 uppercase">Record ID</dt>
+              <dd className="mt-1 text-md font-mono text-gray-700 break-all">
+                {checkin._id}
+              </dd>
+            </div>
 
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.4 }}
-            className="flex flex-col sm:flex-row sm:items-center justify-between pt-3"
-          >
-            <strong className="text-gray-800 mb-1 sm:mb-0">Location:</strong>
-            <span className="text-gray-600 font-medium break-words sm:text-right">
-              {typeof checkin.location === "object"
-                ? checkin.location.address ||
-                  `Lat: ${checkin.location.latitude}, Long: ${checkin.location.longitude}`
-                : checkin.location || "Not Available"}
-            </span>
-          </motion.div>
+            {/* Location Address */}
+            <div className="sm:col-span-2 border-l-4 border-blue-500 pl-4">
+              <dt className="text-sm font-medium text-gray-500 uppercase">Location / Address</dt>
+              <dd className="mt-1 text-lg font-medium text-gray-900 leading-relaxed">
+                {renderLocation(checkin.location)}
+              </dd>
+            </div>
+
+          </dl>
         </div>
-      </motion.div>
+      </div>
 
       {/* Footer note */}
-      <div className="text-center mt-8 text-gray-500 text-sm">
-        <p>Employee check-in details • Updated in real-time</p>
+      <div className="text-center mt-10 text-gray-500 text-sm">
+        <p>Administrative Detail View • Check-in record is authoritative.</p>
       </div>
     </div>
   );

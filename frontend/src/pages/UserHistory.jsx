@@ -31,7 +31,7 @@ function UserHistory() {
     <div className="min-h-screen bg-gray-50 p-6 relative">
       {/* 🔙 Fixed Back Button */}
       <button
-        onClick={() => navigate("/")}
+        onClick={() => navigate(-1)}
         className="fixed top-4 left-4 z-50 flex items-center gap-2 bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-all shadow-md text-sm sm:text-base"
       >
         <FaArrowLeftLong className="w-4 h-4 sm:w-5 sm:h-5" />
