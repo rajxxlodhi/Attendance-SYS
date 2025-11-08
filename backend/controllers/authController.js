@@ -72,3 +72,5 @@ export const LogOutEmployee = async (req, res) => {
     return res.status(500).json({ message: `Error in logout controller: ${error.message}` });
   }
 };
+
+

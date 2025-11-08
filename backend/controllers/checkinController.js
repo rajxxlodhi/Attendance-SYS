@@ -3,7 +3,7 @@ import CheckIn from "../models/CheckinModel.js";
 import Employee from "../models/Employee.js";
 import { io } from "../socket/socket.js";
 
-const EXPIRE_MS = 14 * 60 * 60 * 1000; // 14 hours
+const EXPIRE_MS = 10 * 60 * 60 * 1000; // 14 hours
 
 // Auto-finish old check-ins & emit real-time updates
 async function autoFinishOld(userId) {
@@ -35,6 +35,7 @@ async function autoFinishOld(userId) {
         console.error("Socket emit error in autoFinishOld:", err);
       }
     }
+  
   }
 }
 
@@ -92,6 +93,8 @@ export const createCheckin = async (req, res) => {
   }
 };
 
+
+
 export const getActive = async (req, res) => {
   try {
     const userId = req.userId;
@@ -117,33 +120,34 @@ export const getActive = async (req, res) => {
 export const checkout = async (req, res) => {
   try {
     const userId = req.userId;
-
     const active = await CheckIn.findOne({
       user: userId,
       status: "active",
       checkOutTime: null,
     });
 
-    if (!active) {
-      return res.status(400).json({ message: "No active check-in found." });
-    }
+    if (!active) return res.status(400).json({ message: "No active check-in found." });
 
     active.checkOutTime = new Date();
     active.status = "checked-out";
     await active.save();
 
-    // Notify admin dashboard instantly that a check-in is complete (can use 'updateCheckin' or 'employeeCheckedOut')
-    io.emit("employeeCheckedOut", { 
+    // populate before emitting so frontend always gets name/email
+    const populatedCheckin = await CheckIn.findById(active._id)
+      .populate("user", "name email")
+      .lean();
+
+    io.emit("employeeCheckedOut", {
       userId,
-      checkInId: active._id,
+      checkInId: populatedCheckin._id.toString(),
     });
 
-    return res.status(200).json({
-      message: "Checked out successfully",
-      data: active,
-    });
-  } catch (error) {
-    console.error("checkout error:", error);
+    // send full populated object for realtime displays
+    io.emit("updateCheckin", populatedCheckin);
+
+    return res.status(200).json({ message: "Checked out successfully", data: populatedCheckin });
+  } catch (err) {
+    console.error("checkout error:", err);
     return res.status(500).json({ message: "Server error" });
   }
 };
@@ -201,17 +205,5 @@ export const getCheckinHistory = async (req, res) => {
 };
 
 // Admin helper: get all checkins (for /api/admin/checkins)
-export const getAllCheckinsForAdmin = async (req, res) => {
-  try {
-    // optionally verify admin role here if your isAuth doesn't include role check
-    const all = await CheckIn.find({})
-      .sort({ checkInTime: -1 })
-      .populate("user", "name email")
-      .lean();
 
-    return res.status(200).json(all);
-  } catch (err) {
-    console.error("getAllCheckinsForAdmin error:", err);
-    return res.status(500).json({ message: "Server error" });
-  }
-};
+

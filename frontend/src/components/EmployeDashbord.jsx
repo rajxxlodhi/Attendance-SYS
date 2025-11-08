@@ -1,3 +1,4 @@
+// src/components/EmployeDashbord.jsx
 import React, { useContext, useState, useEffect, useRef } from "react";
 import { GiHamburgerMenu } from "react-icons/gi";
 import { CgProfile } from "react-icons/cg";
@@ -69,44 +70,40 @@ function EmployeDashbord() {
   };
 
   useEffect(() => {
-    if (!socket || !active) return; // ✅ Added !active check
+    if (!socket) return;
 
-    // Unified handler for manual checkout, force checkout, and auto-finish
+    // unified handler that supports multiple payload shapes
     const handleCheckinCompletion = (data) => {
-      // Check if the event data belongs to the current active check-in
-      // and that the check-in is now marked as finished (not 'active')
-      if (active && data._id === active._id && data.status !== "active") {
+      // If backend sends full checkin object (updateCheckin)
+      if (data?._id && active && data._id === active._id && data.status?.toLowerCase() !== "active") {
         setActive(null);
         localStorage.removeItem("activeCheckin");
-        fetchActive(); // This correctly refreshes the UI
+        fetchActive();
+        return;
+      }
+      // If backend sends small payload { checkInId }
+      const id = data?.checkInId || data?._id || data?.id;
+      if (id && active && id === active._id) {
+        setActive(null);
+        localStorage.removeItem("activeCheckin");
+        fetchActive();
       }
     };
 
-    // ✅ Listen for the new 'updateCheckin' event which carries the auto-finished status
     socket.on("updateCheckin", handleCheckinCompletion);
-    
-    // employeeCheckedOut is still good for manual/force checkout payloads
-    socket.on("employeeCheckedOut", handleCheckinCompletion); 
-    
-    // ❌ Removed: socket.on("autoFinishCheckin", handleAutoFinish);
+    socket.on("employeeCheckedOut", handleCheckinCompletion);
 
     return () => {
       socket.off("updateCheckin", handleCheckinCompletion);
       socket.off("employeeCheckedOut", handleCheckinCompletion);
     };
-  }, [socket, fetchActive, setActive, active]); // ✅ IMPORTANT: 'active' dependency added
-
+  }, [socket, active, fetchActive, setActive]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-gray-100 to-gray-200">
-      {/* Header */}
       <header className="fixed top-0 w-full bg-white/80 backdrop-blur-md shadow-md z-50 transition-all duration-300">
         <div className="flex items-center justify-between w-full min-h-[70px] px-5 md:px-10 border-b border-gray-200">
-          <h1 className="text-xl md:text-2xl font-extrabold text-red-500 tracking-wide">
-            Employee Attendance
-          </h1>
-
-          {/* Profile Menu */}
+          <h1 className="text-xl md:text-2xl font-extrabold text-red-500 tracking-wide">Employee Attendance</h1>
           <div className="relative">
             <button
               ref={buttonRef}
@@ -124,22 +121,14 @@ function EmployeDashbord() {
             </button>
 
             {popUp && (
-              <div
-                ref={popUpRef}
-                className="absolute right-0 top-[55px] bg-white shadow-xl rounded-xl py-2 w-44 md:w-52 border border-gray-100"
-              >
+              <div ref={popUpRef} className="absolute right-0 top-[55px] bg-white shadow-xl rounded-xl py-2 w-44 md:w-52 border border-gray-100">
                 <ul>
                   {userData ? (
-                    <li
-                      onClick={handleLogOut}
-                      className="px-4 py-2 text-red-600 hover:bg-red-50 hover:text-red-700 cursor-pointer rounded-md text-sm md:text-base transition-all"
-                    >
+                    <li onClick={handleLogOut} className="px-4 py-2 text-red-600 hover:bg-red-50 hover:text-red-700 cursor-pointer rounded-md text-sm md:text-base transition-all">
                       Logout
                     </li>
                   ) : (
-                    <li className="px-4 py-2 cursor-pointer hover:bg-gray-100 rounded-md text-sm md:text-base transition-all">
-                      Login
-                    </li>
+                    <li className="px-4 py-2 cursor-pointer hover:bg-gray-100 rounded-md text-sm md:text-base transition-all">Login</li>
                   )}
                 </ul>
               </div>
@@ -148,52 +137,27 @@ function EmployeDashbord() {
         </div>
       </header>
 
-      {/* Body */}
       <main className="flex flex-col items-center gap-8 pt-[100px] pb-12 px-4 md:px-8">
         <h2 className="text-lg md:text-2xl font-semibold text-gray-800 text-center">
           Welcome, <span className="text-red-500">{userData?.name || "Employee"}</span> 👋
         </h2>
 
-        {/* Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center w-full max-w-lg">
-          <button
-            onClick={() => navigate("/checkin")}
-            className="w-full sm:w-auto px-8 py-3 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600 transition-all duration-200"
-          >
-            Check In
-          </button>
+          <button onClick={() => navigate("/checkin")} className="w-full sm:w-auto px-8 py-3 bg-green-500 text-white rounded-lg shadow-md hover:bg-green-600 transition-all duration-200">Check In</button>
 
-          <button
-            onClick={handleCheckOut}
-            disabled={loading}
-            className={`w-full sm:w-auto px-8 py-3 rounded-lg text-white shadow-md ${
-              loading
-                ? "bg-gray-400 cursor-not-allowed"
-                : "bg-red-500 hover:bg-red-600"
-            } transition-all duration-200`}
-          >
+          <button onClick={handleCheckOut} disabled={loading} className={`w-full sm:w-auto px-8 py-3 rounded-lg text-white shadow-md ${loading ? "bg-gray-400 cursor-not-allowed" : "bg-red-500 hover:bg-red-600"} transition-all duration-200`}>
             {loading ? "Processing..." : "Check Out"}
           </button>
 
-          <button
-            onClick={() => navigate("/history")}
-            className="w-full sm:w-auto px-8 py-3 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition-all duration-200"
-          >
-            View History
-          </button>
+          <button onClick={() => navigate("/history")} className="w-full sm:w-auto px-8 py-3 bg-blue-500 text-white rounded-lg shadow-md hover:bg-blue-600 transition-all duration-200">View History</button>
         </div>
 
-        {/* Active Check-in Info */}
         {active ? (
           <div className="p-6 bg-white rounded-2xl shadow-xl mt-6 w-full max-w-lg border border-gray-100">
-            <h3 className="text-lg md:text-xl font-semibold mb-4 text-gray-800 border-b pb-2">
-              Your Active Check-In
-            </h3>
+            <h3 className="text-lg md:text-xl font-semibold mb-4 text-gray-800 border-b pb-2">Your Active Check-In</h3>
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="flex-1 text-sm md:text-base space-y-2">
-                <p className="font-bold text-lg text-gray-900">
-                  {userData?.name || "-"}
-                </p>
+                <p className="font-bold text-lg text-gray-900">{userData?.name || "-"}</p>
                 <p><strong>Email:</strong> {userData?.email || "-"}</p>
                 <p><strong>Check-In:</strong> {formatDate(active.checkInTime)}</p>
                 <p><strong>Address:</strong> {active.location?.address || address || "Unknown"}</p>
@@ -201,38 +165,20 @@ function EmployeDashbord() {
                 <p><strong>Longitude:</strong> {active.location?.longitude ?? "-"}</p>
                 <p>
                   <strong>Status:</strong>{" "}
-                  <span
-                    className={`${
-                      active.checkOutTime
-                        ? "text-red-600"
-                        : active.autoFinished
-                        ? "text-yellow-600"
-                        : "text-green-600"
-                    } font-semibold`}
-                  >
-                    {active.checkOutTime
-                      ? "Checked Out"
-                      : active.autoFinished
-                      ? "Auto Finished"
-                      : "Active"}
+                  <span className={`${active.checkOutTime ? "text-red-600" : active.autoFinished ? "text-yellow-600" : "text-green-600"} font-semibold`}>
+                    {active.checkOutTime ? "Checked Out" : active.autoFinished ? "Auto Finished" : "Active"}
                   </span>
                 </p>
               </div>
               {active.image && (
                 <div className="flex-shrink-0">
-                  <img
-                    src={active.image}
-                    alt="Check-in"
-                    className="w-36 h-36 rounded-xl border border-gray-200 object-cover shadow-md"
-                  />
+                  <img src={active.image} alt="Check-in" className="w-36 h-36 rounded-xl border border-gray-200 object-cover shadow-md" />
                 </div>
               )}
             </div>
           </div>
         ) : (
-          <p className="mt-6 text-gray-600 text-sm md:text-base text-center">
-            No active check-in found.
-          </p>
+          <p className="mt-6 text-gray-600 text-sm md:text-base text-center">No active check-in found.</p>
         )}
       </main>
     </div>

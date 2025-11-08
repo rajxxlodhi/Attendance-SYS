@@ -12,6 +12,7 @@ import AllEmployes from "./pages/AllEmployes.jsx";
 import { useEffect } from "react";
 import {io} from "socket.io-client"
 import EmployeeDetails from "./pages/EmployeeDetails.jsx";
+import ToDayCheckOut from "./pages/ToDayCheckOut.jsx";
 
 function App() {
   const { userData } = useContext(userDataContext);
@@ -29,6 +30,7 @@ function App() {
             <Route path="/history/:id" element={userData ? <UserHistory /> : <Navigate to="/login" />}/>
             <Route path="/allEmployes"element={<AllEmployes />}/>
             <Route path="/employee/:checkinId" element={<EmployeeDetails />} />
+            <Route path="/all-checkout"  element={userData ? <ToDayCheckOut /> : <Navigate to="/login" />} />
             
       </Routes>
     </>

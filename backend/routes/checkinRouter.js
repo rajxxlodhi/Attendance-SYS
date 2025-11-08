@@ -14,4 +14,5 @@ checkinRouter.get("/history", isAuth, getCheckinHistory);
 
 
 
+
 export default checkinRouter;

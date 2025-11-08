@@ -8,27 +8,27 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:5173",
+    origin: "http://localhost:5173", // adjust if frontend runs elsewhere
     credentials: true,
   },
 });
 
 export const userSocketMap = {};
 
+// connection handler
 io.on("connection", (socket) => {
-  const userId = socket.handshake.query.userId;
-  if (userId !== undefined) {
-    userSocketMap[userId] = socket.id;
-  }
+  // client should connect with: io(url, { query: { userId } }) or new URLSearchParams
+  const userId = socket.handshake.query?.userId;
+  if (userId) userSocketMap[userId] = socket.id;
 
-  // broadcast list of online userIds
+  // broadcast online users (optional)
   io.emit("getOnlineUsers", Object.keys(userSocketMap));
 
-  // socket events can be handled here if needed
   socket.on("disconnect", () => {
     if (userId && userSocketMap[userId]) delete userSocketMap[userId];
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
   });
 });
 
+// Export everything so controllers can import io
 export { app, server, io };

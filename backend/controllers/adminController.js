@@ -109,4 +109,41 @@ export const getSingleCheckin = async (req, res) => {
   }
 };
 
+export const getAllCheckinsForAdmin = async (req, res) => {
+  try {
+    // optionally verify admin role here if your isAuth doesn't include role check
+    const all = await CheckIn.find({})
+      .sort({ checkInTime: -1 })
+      .populate("user", "name email")
+      .lean();
+
+    return res.status(200).json(all);
+  } catch (err) {
+    console.error("getAllCheckinsForAdmin error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
+export const getTodayCheckouts = async (req, res) => {
+  try {
+    const start = new Date();
+    start.setHours(0,0,0,0);
+    const end = new Date();
+    end.setHours(23,59,59,999);
+
+    // Return populated documents (user populated)
+    const checkouts = await CheckIn.find({
+      checkOutTime: { $gte: start, $lte: end }
+    })
+      .sort({ checkOutTime: -1 })
+      .populate("user", "name email")
+      .lean();
+
+    // return as-is — frontend expects item.user.name / item.user.email
+    return res.status(200).json(checkouts);
+  } catch (err) {
+    console.error("getTodayCheckouts error:", err);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
 
